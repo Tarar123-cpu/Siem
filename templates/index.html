@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIEM Logs</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <header style="display: flex; flex-direction: row;">
+        <h1>SIEM Logs</h1>
+        <h1 style="margin-left: auto;">Number of Logs : {{ len }}</h1>
+    </header>
+    <div id="option" style="margin: 10px;">
+        <input type="radio" id="logs" name="dataOption" value="logs" checked>
+        <label for="logs">Logs</label>
+        <input type="radio" id="charts" name="dataOption" value="charts">
+        <label for="charts">Charts</label>
+    </div>
+    <div id="logsTable">
+        <table>
+            <thead>
+                <tr>
+                    <th>Event ID</th>
+                    <th>Time Generated</th>
+                    <th>Event Type</th>
+                    <th>Log Source</th>
+                    <th>Source Name</th>
+                    <th>String Inserts</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log['EventID'] }}</td>
+                    <td>{{ log['TimeGenerated'] }}</td>
+                    <td>{{ log['EventType'] }}</td>
+                    <td>{{ log['LogSource'] }}</td>
+                    <td>{{ log['SourceName'] }}</td>
+                    <td>{{ log['StringInserts'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="chartsContainer" style="display: none; width: 500px; padding: 20px;">
+        <canvas id="firstChart"></canvas>
+    </div>
+    <div class="chartsContainer" style="display: none; width: 500px; padding: 20px;">
+        <canvas id="secondChart"></canvas>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module">
+        // import Chart from 'chart.js/auto';
+
+        document.addEventListener("DOMContentLoaded", function() {
+            var logsOption = document.getElementById("logs");
+            var chartsOption = document.getElementById("charts");
+            var logsTable = document.getElementById("logsTable");
+            var chartsContainer = document.getElementsByClassName("chartsContainer");
+
+            logsOption.addEventListener("change", function() {
+                logsTable.style.display = "block";
+                // chartsContainer.style.display = "none";
+                chartsContainer[0].style.display = "none";
+                chartsContainer[1].style.display = "none";
+            });
+
+            chartsOption.addEventListener("change", function() {
+                logsTable.style.display = "none";
+                // chartsContainer.style.display = "block";
+                chartsContainer[0].style.display = "block";
+                chartsContainer[1].style.display = "block";
+                // Call a function to load or generate charts here
+                loadCharts();
+            });
+
+            // Function to load or generate charts
+            function loadCharts() {
+
+                console.log('{{ len }}')          
+
+                // Write code to load or generate charts using Chart.js
+                // console.log('{{ logs[0]["LogSource"] }}');
+                var logs = '{{logs | tojson}}';
+                logs = logs.split('2024"}');
+
+                var newlogs = [];
+
+                var i = 0;
+                logs.forEach(element => {
+                    if (i == 0) {
+                        element = element.substring(1);
+                    } else {
+                        element = element.substring(2);
+                    }
+                    element = element.replace(/(\r\n|\n|\r)/gm, "");
+                    element = element.concat('2024"}');
+                    console.log(element);
+
+                    if (element.includes( "HostApplication=")) {
+                        console.log("not pushed");
+                    } else {
+                        newlogs.push(element);
+                    }
+                    i++;
+                });
+
+                newlogs.pop();
+                console.log(newlogs);
+
+                var updatedlogs = []
+
+                newlogs.forEach(el => {
+                    updatedlogs.push(JSON.parse(el));
+                })
+
+                var logSourcesExtra = []
+
+                updatedlogs.forEach(el => {
+                    logSourcesExtra.push(el.LogSource);
+                })
+
+                var logSources = [...new Set(logSourcesExtra)]
+
+                const firstCounts = {};
+                logSourcesExtra.forEach(function (x) { firstCounts[x] = (firstCounts[x] || 0) + 1; });
+
+                var firstResult = Object.keys(firstCounts).map((key) => firstCounts[key]);
+                console.log(firstResult);
+
+                const firstData = {
+                    labels: logSources,
+                    datasets: [{
+                        label: 'Occurences',
+                        // data: [firstCounts[logSources[0]], firstCounts[logSources[1]], firstCounts[logSources[2]], firstCounts[logSources[3]], firstCounts[logSources[4]], firstCounts[logSources[5]], firstCounts[logSources[6]]],
+                        data: firstResult,
+                        backgroundColor: [
+                            'rgb(255, 0, 0)',
+                            'rgb(0, 255, 0)',
+                            'rgb(0, 0, 255)',
+                            'rgb(255, 0, 255)',
+                            'rgb(0, 255, 255)',
+                            'rgb(255, 255, 0)',
+                            'rgb(150, 150, 150)',
+                        ],
+                        hoverOffset: 4
+                    }]
+                };
+
+                new Chart(document.getElementById('firstChart'), {type: 'pie', data: firstData});
+
+                var sourceNameExtra = []
+
+                updatedlogs.forEach(el => {
+                    sourceNameExtra.push(el.SourceName);
+                })
+
+                console.log(sourceNameExtra);
+
+                var sourceNames = [...new Set(sourceNameExtra)];
+
+                console.log(sourceNames);
+
+                const secondCounts = {};
+                sourceNameExtra.forEach(function (x) { secondCounts[x] = (secondCounts[x] || 0) + 1; });
+
+                var secondResult = Object.keys(firstCounts).map((key) => firstCounts[key]);
+                console.log(secondResult);
+
+                const secondData = {
+                    labels: sourceNames,
+                    datasets: [{
+                        label: 'Occurences',
+                        // data: [secondCounts[sourceNames[0]], secondCounts[sourceNames[1]], secondCounts[sourceNames[2]], secondCounts[sourceNames[3]], secondCounts[sourceNames[4]], secondCounts[sourceNames[5]]],
+                        data: secondResult,
+                        backgroundColor: [
+                            'rgb(255, 0, 0)',
+                            'rgb(0, 255, 0)',
+                            'rgb(0, 0, 255)',
+                            'rgb(255, 0, 255)',
+                            'rgb(0, 255, 255)',
+                            'rgb(255, 255, 0)',
+                            'rgb(150, 150, 150)',
+                        ],
+                        hoverOffset: 4
+                    }]
+                };
+
+                new Chart(document.getElementById('secondChart'), {type: 'pie', data: secondData});
+
+            }
+        });
+    </script>
+    
+</body>
+</html>
